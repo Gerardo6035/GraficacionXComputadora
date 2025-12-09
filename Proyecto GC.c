@@ -4,6 +4,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+//Texturas para los planetas
+GLuint texMercurio = 0;
+GLuint texVenus   = 0;
+GLuint texTierra  = 0;  
+GLuint texMarte   = 0;
+GLuint texJupiter = 0;
+GLuint texSaturno = 0;
+GLuint texUrano   = 0;
+GLuint texNeptuno = 0;
 
 //Se usaron structs para cumplir con los requisitos del proyecto
 
@@ -43,33 +52,40 @@ enum Escenas {
     //Mercurio (2 escenas)
     MERCURIO_LEJOS,     //3: Vista del planeta (5s)
     MERCURIO_CERCA,     //4: Superficie con diálogo (10s)
-    
+
     VIAJE2,             //5: Viajando (8s)
-    
-    //Marte (2 escenas)
-    MARTE_LEJOS,        //6: Vista del planeta (5s)
-    MARTE_CERCA,        //7: Superficie con diálogo (10s)
-    
+
+    //Venus (2 escenas)
+    VENUS_LEJOS,        //6: Vista del planeta (5s)
+    VENUS_CERCA,        //7: Superficie con diálogo (10s)
+
     VIAJE3,             //8: Viajando (8s)
-    
-    //Jupiter (2 escenas)
-    JUPITER_LEJOS,      //9: Vista del planeta (5s)
-    JUPITER_CERCA,      //10: Superficie con diálogo (10s)
-    
+
+    //Marte (2 escenas)
+    MARTE_LEJOS,        //9: Vista del planeta (5s)
+    MARTE_CERCA,        //10: Superficie con diálogo (10s)
+
     VIAJE4,             //11: Viajando (8s)
-    
+
+    //Jupiter (2 escenas)
+    JUPITER_LEJOS,      //12: Vista del planeta (5s)
+    JUPITER_CERCA,      //13: Superficie con diálogo (10s)
+
+    VIAJE5,             //14: Viajando (8s)
+
     //Saturno (2 escenas)
-    SATURNO_LEJOS,      //12: Vista del planeta (5s)
-    SATURNO_CERCA,      //13: Superficie con diálogo (10s)
-    
-    REGRESO,            //14: Regresando (15s)
-    CASTIGO,            //15: Castigados (20s)
-    CREDITOS            //16: Fin (10s)
+    SATURNO_LEJOS,      //15: Vista del planeta (5s)
+    SATURNO_CERCA,      //16: Superficie con diálogo (10s)
+
+    REGRESO,            //17: Regresando (15s)
+    CASTIGO,            //18: Castigados (20s)
+    CREDITOS            //19: Fin (10s)
 };
+
 
 //Variables globales
 //Cola de escenas (orden de la pelicula)
-int cola[35];            //Arreglo que guarda las escenas en orden
+int cola[30];            //Arreglo que guarda las escenas en orden
 int escenaActual = 0;    //En que escena estamos
 int totalEscenas = 0;    //Cuantas escenas hay
 
@@ -89,7 +105,85 @@ int naveConTripulacion = 1;   //1 = se dibujan adentro, 0 = nave vacía
 Nodo* listaFrames = NULL;      //Lista de frames
 NodoPila* pilaCamara = NULL;   //Pila de cámaras
 
+//Texturas
+//Funcion para cargar texturas
+GLuint cargarTexturaBMP(const char* filename) {
+    FILE* f = fopen(filename, "rb");
+    if (!f) {
+        printf("No se pudo abrir la textura: %s\n", filename);
+        return 0;
+    }
+
+    unsigned char header[54];
+    if (fread(header, 1, 54, f) != 54) {
+        printf("Archivo BMP invalido: %s\n", filename);
+        fclose(f);
+        return 0;
+    }
+
+    // Comprobar "BM"
+    if (header[0] != 'B' || header[1] != 'M') {
+        printf("No es un BMP valido: %s\n", filename);
+        fclose(f);
+        return 0;
+    }
+
+    unsigned int dataPos   = *(int*)&(header[0x0A]);
+    unsigned int imageSize = *(int*)&(header[0x22]);
+    int width  = *(int*)&(header[0x12]);
+    int height = *(int*)&(header[0x16]);
+
+    if (imageSize == 0) imageSize = width * height * 3; // 24 bits
+    if (dataPos == 0)   dataPos   = 54;
+
+    unsigned char* data = (unsigned char*)malloc(imageSize);
+    if (!data) {
+        printf("No hay memoria para la textura: %s\n", filename);
+        fclose(f);
+        return 0;
+    }
+
+    fseek(f, dataPos, SEEK_SET);
+    fread(data, 1, imageSize, f);
+    fclose(f);
+
+    // BMP viene en BGR, lo pasamos a RGB
+    for (unsigned int i = 0; i < imageSize; i += 3) {
+        unsigned char tmp = data[i];
+        data[i]     = data[i + 2];
+        data[i + 2] = tmp;
+    }
+
+    GLuint texID;
+    glGenTextures(1, &texID);
+    glBindTexture(GL_TEXTURE_2D, texID);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB,
+                 width, height, 0,
+                 GL_RGB, GL_UNSIGNED_BYTE, data);
+
+    free(data);
+    printf("Textura cargada: %s (id=%u)\n", filename, texID);
+    return texID;
+}
+
+
 //Funciones 
+
+//Funcion para cargar texturas
+void cargarTexturasPlanetas() {
+    texMercurio = cargarTexturaBMP("Texturas/Mercurio.bmp");
+    texVenus    = cargarTexturaBMP("Texturas/Venus.bmp");
+    texTierra   = cargarTexturaBMP("Texturas/Tierra.bmp");
+    texMarte    = cargarTexturaBMP("Texturas/Marte.bmp");
+    texJupiter  = cargarTexturaBMP("Texturas/Jupiter.bmp");
+    texSaturno  = cargarTexturaBMP("Texturas/Saturno.bmp");
+    texUrano    = cargarTexturaBMP("Texturas/Urano.bmp");
+    texNeptuno  = cargarTexturaBMP("Texturas/Neptuno.bmp");
+}
 
 //Funciones de lista
 void agregarALista(float x, float y, float z) {
@@ -225,35 +319,66 @@ void iniciarOpenGL() {
     
     glEnable(GL_COLOR_MATERIAL);
     glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+
     
     //Configurar proyeccion
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     gluPerspective(50.0, 1.33, 1.0, 100.0);
     glMatrixMode(GL_MODELVIEW);
+
+    // Cargar las texturas de los planetas
+    cargarTexturasPlanetas();
 }
 
 //Funciones de dibujo
-//Dibuja un planeta en su posicion orbital
-void dibujarPlaneta(Planeta p) {
+//Dibuja un planeta en su orbita usando textura si texID != 0
+void dibujarPlanetaTexturizado(Planeta p, GLuint texID) {
     glPushMatrix();
         //Rotar segun su angulo orbital
-        glRotatef(p.angulo, 0.0, 1.0, 0.0);
-        
+        glRotatef(p.angulo, 0.0f, 1.0f, 0.0f);
         //Moverse a la distancia del Sol
-        glTranslatef(p.distancia, 0.0, 0.0);
-        
-        //Aplicar color
-        glColor3f(p.colorR, p.colorG, p.colorB);
-        
-        //Dibujar esfera
-        glutSolidSphere(p.radio, 20, 20);
-        
-        //Si es Saturno, dibujar anillos
-        if(p.distancia == saturno.distancia) {
-            glColor3f(0.8, 0.7, 0.5);
-            glRotatef(90, 1.0, 0.0, 0.0);//Horizontal
-            glutSolidTorus(0.08, p.radio + 0.3, 10, 30);
+        glTranslatef(p.distancia, 0.0f, 0.0f);
+
+        glPushMatrix();
+
+        //Rotar para que la textura se vea bien
+        glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+
+        if (texID != 0) {
+            glEnable(GL_TEXTURE_2D);
+            glBindTexture(GL_TEXTURE_2D, texID);
+
+            GLUquadric *q = gluNewQuadric();
+            gluQuadricTexture(q, GL_TRUE);
+            glColor3f(1.0f, 1.0f, 1.0f); // que no se tinte
+
+            gluSphere(q, p.radio, 24, 24);
+            gluDeleteQuadric(q);
+
+            glDisable(GL_TEXTURE_2D);
+        } else {
+            //Sin textura: usar color plano
+            glColor3f(p.colorR, p.colorG, p.colorB);
+            glutSolidSphere(p.radio, 20, 20);
+        }
+        glPopMatrix();
+
+        //Anillo de Saturno sin textura
+        if (p.distancia == saturno.distancia) {
+            glPushMatrix();
+                glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+
+                glDisable(GL_TEXTURE_2D);
+                glColor3f(0.8f, 0.7f, 0.5f);
+
+                GLUquadric* q2 = gluNewQuadric();
+                gluDisk(q2,
+                        p.radio + 0.1f,//interno
+                        p.radio + 0.4f,//externo
+                        40, 1);
+                gluDeleteQuadric(q2);
+            glPopMatrix();
         }
     glPopMatrix();
 }
@@ -323,6 +448,9 @@ void dibujarBrazo(float largo, float grosor) {
 //Pierna derecha
 void dibujarPildora() {
     glPushMatrix();
+
+        //Deshabilitar texturas
+        glDisable(GL_TEXTURE_2D);
 
         glDisable(GL_LIGHTING);
 
@@ -430,6 +558,9 @@ void dibujarPildora() {
 void dibujarPastilla() {
     glPushMatrix();
 
+        //Deshabilitar texturas
+        glDisable(GL_TEXTURE_2D);
+
         glDisable(GL_LIGHTING);
 
         glScalef(0.5, 0.5, 0.5);
@@ -531,9 +662,79 @@ void dibujarPastilla() {
     glPopMatrix();
 }
 
+//DIbujar Dios: triangulo 3D con un ojo en medio
+void dibujarDios() {
+    glPushMatrix();
+
+        //Deshabilitar texturas
+        glDisable(GL_TEXTURE_2D);
+
+        glDisable(GL_LIGHTING);
+
+        glScalef(0.7f, 0.7f, 0.7f);
+
+        //Cuerpo
+        glColor3f(0.4f, 1.0f, 0.2f);//verde
+
+        glBegin(GL_TRIANGLES);
+            //Vertices
+            float vTop[3] =  { 0.0f,  0.6f,  0.0f};//punta
+            float v1[3]  = {-0.6f, -0.3f,  0.4f};//izquierda
+            float v2[3]  = { 0.6f, -0.3f,  0.4f};//derecha
+            float v3[3]  = { 0.0f, -0.3f, -0.6f};//atras
+
+            //Cara frontal
+            glVertex3fv(vTop);
+            glVertex3fv(v1);
+            glVertex3fv(v2);
+
+            //Cara derecha
+            glVertex3fv(vTop);
+            glVertex3fv(v2);
+            glVertex3fv(v3);
+
+            //Cara izquierda
+            glVertex3fv(vTop);
+            glVertex3fv(v3);
+            glVertex3fv(v1);
+
+            //Base (triangulo de abajo)
+            glVertex3fv(v1);
+            glVertex3fv(v3);
+            glVertex3fv(v2);
+        glEnd();
+
+        //Ojo en la cara frontal
+        glPushMatrix();
+            //Frente del triángulo
+            glTranslatef(0.0f, 0.05f, 0.32f);
+
+            //Esclerótica (blanco)
+            glColor3f(1.0f, 1.0f, 1.0f);
+            glutSolidSphere(0.12f, 16, 16);
+
+            //Iris (azul)
+            glColor3f(0.0f, 0.3f, 0.9f);
+            glTranslatef(0.0f, 0.0f, 0.06f);
+            glutSolidSphere(0.07f, 16, 16);
+
+            //Pupila (negra)
+            glColor3f(0.0f, 0.0f, 0.0f);
+            glTranslatef(0.0f, 0.0f, 0.04f);
+            glutSolidSphere(0.035f, 12, 12);
+        glPopMatrix();
+
+        glEnable(GL_LIGHTING);
+    glPopMatrix();
+}
+
 //Dibujar nave
 void dibujarNave() {
     glPushMatrix();
+
+        //Deshabilitar texturas
+        glDisable(GL_TEXTURE_2D);
+        
         //Posicion
         glTranslatef(nave.x, nave.y, nave.z);
         glRotatef(nave.rotacion, 0.0, 1.0, 0.0);
@@ -606,25 +807,57 @@ void dibujarPersonajesEnPlaneta(Planeta p) {
 }
 
 
-//Dibujar planetas de cerca
-void dibujarPlanetaCerca(Planeta p) {
+void dibujarPlanetaCerca(Planeta p, GLuint texID) {
     glPushMatrix();
-        //Planeta grande en el centro de la escena
-        float radioGrande = p.radio * 3.5f; //3.5x el tamaño normal
-        glColor3f(p.colorR, p.colorG, p.colorB);
-        glutSolidSphere(radioGrande, 30, 30);
+        float radioGrande = p.radio * 3.5f;
 
-        //Si es Saturno, dibujar anillos grandes
+        glPushMatrix();
+        //Rotar para que la textura se vea bien
+        glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+
+        if (texID != 0) {
+            // Usar esfera con textura
+            glEnable(GL_TEXTURE_2D);
+            glBindTexture(GL_TEXTURE_2D, texID);
+
+            GLUquadric* q = gluNewQuadric();
+            gluQuadricTexture(q, GL_TRUE);
+            glColor3f(1.0f, 1.0f, 1.0f); // que no se tinte
+
+            gluSphere(q, radioGrande, 30, 30);
+            gluDeleteQuadric(q);
+
+            glDisable(GL_TEXTURE_2D);
+        } else {
+            // Sin textura: color normal
+            glColor3f(p.colorR, p.colorG, p.colorB);
+            glutSolidSphere(radioGrande, 30, 30);
+        }
+        glPopMatrix();
+
+        //Anillo de Saturno sin textura
         if (p.distancia == saturno.distancia) {
-            glColor3f(0.85f, 0.75f, 0.55f);
-            glRotatef(90.0f, 1.0f, 0.0f, 0.0f);//Horizontal
-            glutSolidTorus(0.25f, radioGrande + 0.6f, 20, 40);
+            glPushMatrix();
+                //Acostado
+                glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+
+                glDisable(GL_TEXTURE_2D);//no use textura
+                glColor3f(0.85f, 0.75f, 0.55f);//color beige
+
+                GLUquadric* q2 = gluNewQuadric();
+                //Disco con hueco
+                gluDisk(q2,
+                        radioGrande + 0.1f,//interno
+                        radioGrande + 0.40f,//externo
+                        60, 1);
+                gluDeleteQuadric(q2);
+            glPopMatrix();
         }
     glPopMatrix();
 }
 
 //Dibujar superficie del planeta como en un horizonte
-void dibujarSuperficiePlaneta(Planeta p, const char* dialogo1, const char* dialogo2) {
+void dibujarSuperficiePlaneta(Planeta p, GLuint texID, const char* dialogo1, const char* dialogo2) {
     //Planeta como suelo curvo
     glPushMatrix();
         //Radio grande fijo para que el horizonte se vea parecido en todos los planetas
@@ -633,8 +866,22 @@ void dibujarSuperficiePlaneta(Planeta p, const char* dialogo1, const char* dialo
         //Bajamos el centro de la esfera en -R
         glTranslatef(0.0f, -R, 0.0f);
 
-        glColor3f(p.colorR, p.colorG, p.colorB);
-        glutSolidSphere(R, 40, 40);
+        if (texID != 0) {
+            glEnable(GL_TEXTURE_2D);
+            glBindTexture(GL_TEXTURE_2D, texID);
+
+            GLUquadric* q = gluNewQuadric();
+            gluQuadricTexture(q, GL_TRUE);
+            glColor3f(1.0f, 1.0f, 1.0f);
+
+            gluSphere(q, R, 40, 40);
+            gluDeleteQuadric(q);
+
+            glDisable(GL_TEXTURE_2D);
+        } else {
+            glColor3f(p.colorR, p.colorG, p.colorB);
+            glutSolidSphere(R, 40, 40);
+        }
     glPopMatrix();
 
     //Personajes parados en la superficie
@@ -708,6 +955,7 @@ void display(void) {
         case VIAJE2:
         case VIAJE3:
         case VIAJE4:
+        case VIAJE5:
             //Camara panoramica del espacio
             gluLookAt(0.0, 20.0, -25.0,
                       0.0, 0.0, 0.0,
@@ -722,6 +970,14 @@ void display(void) {
                       0.0, 1.0, 0.0);
             duracion = 5000;//5 segundos
             break;
+
+        case VENUS_LEJOS:
+            gluLookAt(0.0, 1.7, 5.5,
+                      0.0, 0.5, 0.0,
+                      0.0, 1.0, 0.0);
+            duracion = 5000;
+            break;
+
 
         case MARTE_LEJOS:
             gluLookAt(0.0, 1.5, 5.5,//un poco mas lejos
@@ -749,6 +1005,7 @@ void display(void) {
             
         //Camaras para SUPERFICIE (primer plano)
         case MERCURIO_CERCA:
+        case VENUS_CERCA:
         case MARTE_CERCA:
         case JUPITER_CERCA:
         case SATURNO_CERCA:
@@ -788,10 +1045,11 @@ void display(void) {
     if(escena != CREDITOS) {
         //Estrellas
         //En superficies de planetas: estrellas giran
-        if(escena == MERCURIO_CERCA || escena == MARTE_CERCA  ||
+        if(escena == MERCURIO_CERCA || escena == VENUS_CERCA   || escena == MARTE_CERCA  ||
            escena == JUPITER_CERCA  || escena == SATURNO_CERCA ||
-           escena == MERCURIO_LEJOS || escena == MARTE_LEJOS  ||
+           escena == MERCURIO_LEJOS || escena == VENUS_LEJOS   || escena == MARTE_LEJOS  ||
            escena == JUPITER_LEJOS  || escena == SATURNO_LEJOS) {
+
             glPushMatrix();
                 glRotatef(t * 5.0f, 0.0f, 1.0f, 0.0f);
                 dibujarEstrellas();
@@ -804,11 +1062,12 @@ void display(void) {
         //SS completo
         //No se dibuja en escenas de planetas ni lejos ni cerca
         if(escena != MERCURIO_LEJOS && escena != MERCURIO_CERCA &&
+           escena != VENUS_LEJOS    && escena != VENUS_CERCA    &&
            escena != MARTE_LEJOS    && escena != MARTE_CERCA    &&
            escena != JUPITER_LEJOS  && escena != JUPITER_CERCA  &&
            escena != SATURNO_LEJOS  && escena != SATURNO_CERCA) {
 
-        glPushMatrix();
+            glPushMatrix();
 
             //Solo si no estamos en la intro, dibujamos el sol
             if (escena != INTRO) {
@@ -823,14 +1082,14 @@ void display(void) {
 
             //Planetas: estos siempre se dibujan en las escenas que pasan este if,
             //incluyendo la intro asi si se ven de fondo detrás de los personajes
-            dibujarPlaneta(mercurio);
-            dibujarPlaneta(venus);
-            dibujarPlaneta(tierra);
-            dibujarPlaneta(marte);
-            dibujarPlaneta(jupiter);
-            dibujarPlaneta(saturno);
-            dibujarPlaneta(urano);
-            dibujarPlaneta(neptuno);
+            dibujarPlanetaTexturizado(mercurio, texMercurio);
+            dibujarPlanetaTexturizado(venus, texVenus);
+            dibujarPlanetaTexturizado(tierra, texTierra);
+            dibujarPlanetaTexturizado(marte, texMarte);
+            dibujarPlanetaTexturizado(jupiter, texJupiter);
+            dibujarPlanetaTexturizado(saturno, texSaturno);
+            dibujarPlanetaTexturizado(urano, texUrano);
+            dibujarPlanetaTexturizado(neptuno, texNeptuno);
 
         glPopMatrix();
     }
@@ -872,16 +1131,27 @@ void display(void) {
         case DESPEDIDA: {
             
             //Personajes mirando hacia arriba
+            //Pildora
             glPushMatrix();
-                glTranslatef(tierra.distancia - 0.5f, tierra.radio + 0.3f, 0.0f);
-                glRotatef(20.0f, 1.0f, 0.0f, 0.0f);
+                glTranslatef(tierra.distancia - 0.5f, tierra.radio + -1.0f, -1.5f);
+                glRotatef(-30.0f, 1.0f, 0.0f, 0.0f);
                 dibujarPildora();
             glPopMatrix();
             
+            //Pastilla
             glPushMatrix();
-                glTranslatef(tierra.distancia + 0.5f, tierra.radio + 0.3f, 0.0f);
-                glRotatef(20.0f, 1.0f, 0.0f, 0.0f);
+                glTranslatef(tierra.distancia + 0.5f, tierra.radio + -1.0f, -1.5f);
+                glRotatef(-30.0f, 1.0f, 0.0f, 0.0f);
                 dibujarPastilla();
+            glPopMatrix();
+
+            //Dios flotando arriba de ellos
+            glPushMatrix();
+                //Un poco por encima de la Tierra centrado
+                glTranslatef(tierra.distancia, tierra.radio + 0.3f, 1.0f);
+                //Rotacion para que se vea divino
+                glRotatef(t * 50.0f, 0.0f, 1.0f, 0.0f);
+                dibujarDios();
             glPopMatrix();
             
             dibujarTexto("Dios: Deben visitar todos los planetas", 180, 50);
@@ -891,7 +1161,8 @@ void display(void) {
         case VIAJE1:
         case VIAJE2:
         case VIAJE3:
-        case VIAJE4: {
+        case VIAJE4:
+        case VIAJE5: {
             //Nave viajando por el espacio
             naveConTripulacion = 1; 
             dibujarNave();
@@ -903,7 +1174,7 @@ void display(void) {
         case MERCURIO_LEJOS: {
             //Vista lejana del planeta
             naveConTripulacion = 1; 
-            dibujarPlanetaCerca(mercurio);
+            dibujarPlanetaCerca(mercurio, texMercurio);
             dibujarTexto("Llegando a Mercurio...", 280, 550);
             dibujarNave();
             break;
@@ -911,17 +1182,35 @@ void display(void) {
         
         case MERCURIO_CERCA: {
             naveConTripulacion = 0; 
-            dibujarSuperficiePlaneta(mercurio,
+            dibujarSuperficiePlaneta(mercurio, texMercurio,
                 "Siento que me estoy derritiendo",
                 "Es el planeta mas cercano al Sol es normal");
             dibujarNave();
             break;
         }  
         
+                //Escenas de Venus
+        case VENUS_LEJOS: {
+            naveConTripulacion = 1;
+            dibujarPlanetaCerca(venus, texVenus);
+            dibujarTexto("Llegando a Venus...", 290, 550);
+            dibujarNave();
+            break;
+        }
+
+        case VENUS_CERCA: {
+            naveConTripulacion = 0;
+            dibujarSuperficiePlaneta(venus, texVenus,
+                "Este aire se siente super pesado...",
+                "Su atmosfera es toxica y muy caliente");
+            dibujarNave();
+            break;
+        }
+
         //Escenas de Marte
         case MARTE_LEJOS: {
             naveConTripulacion = 1; 
-            dibujarPlanetaCerca(marte);
+            dibujarPlanetaCerca(marte, texMarte);
             dibujarTexto("Llegando a Marte...", 300, 550);
             dibujarNave();
             break;
@@ -929,7 +1218,7 @@ void display(void) {
         
         case MARTE_CERCA: {
             naveConTripulacion = 0;     
-            dibujarSuperficiePlaneta(marte,
+            dibujarSuperficiePlaneta(marte, texMarte,
                 "Mira Hay rocas rojas por todos lados",
                 "Dicen que Marte tenia agua ahora solo polvo");
             dibujarNave();
@@ -939,7 +1228,7 @@ void display(void) {
         //Escenas de Jupiter
         case JUPITER_LEJOS: {
             naveConTripulacion = 1; 
-            dibujarPlanetaCerca(jupiter);
+            dibujarPlanetaCerca(jupiter, texJupiter);
             dibujarTexto("Llegando a Jupiter...", 290, 550);
             dibujarNave();
             break;
@@ -947,7 +1236,7 @@ void display(void) {
         
         case JUPITER_CERCA: {   
             naveConTripulacion = 0; 
-            dibujarSuperficiePlaneta(jupiter,
+            dibujarSuperficiePlaneta(jupiter, texJupiter,
                 "La gravedad me aplasta",
                 "Jupiter es 318 veces mas masivo que la Tierra");
             dibujarNave();
@@ -957,7 +1246,7 @@ void display(void) {
         //Escenas de Saturno
         case SATURNO_LEJOS: {
             naveConTripulacion = 1; 
-            dibujarPlanetaCerca(saturno);
+            dibujarPlanetaCerca(saturno, texSaturno);
             dibujarTexto("Llegando a Saturno...", 290, 550);
             dibujarNave();
             break;
@@ -965,7 +1254,7 @@ void display(void) {
         
         case SATURNO_CERCA: {
             naveConTripulacion = 0; 
-            dibujarSuperficiePlaneta(saturno,
+            dibujarSuperficiePlaneta(saturno, texSaturno,
                 "Mira Particulas de hielo como nieve",
                 "Son los restos de los anillos cayendo");
             dibujarNave();
@@ -980,17 +1269,28 @@ void display(void) {
         }
         
         case CASTIGO: {
-            //Personajes tristes en la Tierra (sin nave)
+            //Personajes mirando hacia abajo
+            //Pildora
             glPushMatrix();
-                glTranslatef(tierra.distancia - 0.3f, tierra.radio + 0.3f, 0.0f);
-                glRotatef(-10.0f, 0.0f, 0.0f, 1.0f);
+                glTranslatef(tierra.distancia - 0.5f, tierra.radio + -1.0f, -1.0f);
+                glRotatef(30.0f, 1.0f, 0.0f, 0.0f);
                 dibujarPildora();
             glPopMatrix();
             
+            //Pastilla
             glPushMatrix();
-                glTranslatef(tierra.distancia + 0.3f, tierra.radio + 0.3f, 0.0f);
-                glRotatef(10.0f, 0.0f, 0.0f, 1.0f);
+                glTranslatef(tierra.distancia + 0.5f, tierra.radio + -1.0f, -1.5f);
+                glRotatef(30.0f, 1.0f, 0.0f, 0.0f);
                 dibujarPastilla();
+            glPopMatrix();
+
+            //Dios flotando arriba de ellos
+            glPushMatrix();
+                //Un poco por encima de la Tierra centrado
+                glTranslatef(tierra.distancia, tierra.radio + 0.3f, 1.0f);
+                //Rotacion para que se vea divino
+                glRotatef(t * 50.0f, 0.0f, 1.0f, 0.0f);
+                dibujarDios();
             glPopMatrix();
             
             dibujarTexto("Dios: No visitaron Urano ni Neptuno", 180, 550);
@@ -1074,6 +1374,14 @@ void idle(void) {
             nave.rotacion = -20.0f;
             break;
 
+        case VENUS_LEJOS:
+            nave.x = -1.3f;
+            nave.y = 0.8f;
+            nave.z = 2.0f;
+            nave.rotacion = 20.0f;
+            break;
+
+
         case MARTE_LEJOS:
             nave.x = -1.2f;
             nave.y = 0.8f;
@@ -1097,6 +1405,7 @@ void idle(void) {
 
         //Cerca: nave aterrizada en el suelo del planeta
         case MERCURIO_CERCA:
+        case VENUS_CERCA:   
         case MARTE_CERCA:
         case JUPITER_CERCA:
         case SATURNO_CERCA:
@@ -1112,7 +1421,8 @@ void idle(void) {
         case VIAJE1:
         case VIAJE2:
         case VIAJE3:
-        case VIAJE4: {
+        case VIAJE4:
+        case VIAJE5: {
             float radio = 12.0f;
             float angulo = t * 40.0f;
             nave.x = radio * cosf(angulo * 3.14159f / 180.0f);
@@ -1210,29 +1520,35 @@ void configurarPelicula() {
     cola[i++] = MERCURIO_CERCA;  //4: Superficie (10s)
     
     cola[i++] = VIAJE2;          //5: Viaje (8s)
-    
-    //Marte (2 escenas)
-    cola[i++] = MARTE_LEJOS;     //6: Vista (5s)
-    cola[i++] = MARTE_CERCA;     //7: Superficie (10s)
-    
+
+    //Venus (2 escenas)
+    cola[i++] = VENUS_LEJOS;     //6: Vista (5s)
+    cola[i++] = VENUS_CERCA;     //7: Superficie (10s)
+
     cola[i++] = VIAJE3;          //8: Viaje (8s)
     
-    //Jupiter (2 escenas)
-    cola[i++] = JUPITER_LEJOS;   //9: Vista (5s)
-    cola[i++] = JUPITER_CERCA;   //10: Superficie (10s)
+    //Marte (2 escenas)
+    cola[i++] = MARTE_LEJOS;     //9: Vista (5s)
+    cola[i++] = MARTE_CERCA;     //10: Superficie (10s)
     
     cola[i++] = VIAJE4;          //11: Viaje (8s)
     
+    //Jupiter (2 escenas)
+    cola[i++] = JUPITER_LEJOS;   //12: Vista (5s)
+    cola[i++] = JUPITER_CERCA;   //13: Superficie (10s)
+    
+    cola[i++] = VIAJE5;          //14: Viaje (8s)
+    
     //Saturno (2 escenas)
-    cola[i++] = SATURNO_LEJOS;   //12: Vista (5s)
-    cola[i++] = SATURNO_CERCA;   //13: Superficie (10s)
+    cola[i++] = SATURNO_LEJOS;   //15: Vista (5s)
+    cola[i++] = SATURNO_CERCA;   //16: Superficie (10s)
     
-    cola[i++] = REGRESO;         //14: Regreso (15s)
-    cola[i++] = CASTIGO;         //15: Castigo (20s)
-    cola[i++] = CREDITOS;        //16: Fin (10s)
+    cola[i++] = REGRESO;         //17: Regreso (15s)
+    cola[i++] = CASTIGO;         //18: Castigo (20s)
+    cola[i++] = CREDITOS;        //19: Fin (10s)
     
-    totalEscenas = i;//Total: 17 escenas
-    
+    totalEscenas = i;//Total: 20 escenas
+
     //Inicializar reloj
     tiempoInicio = glutGet(GLUT_ELAPSED_TIME);
     
@@ -1248,7 +1564,7 @@ void configurarPelicula() {
     printf("========================================\n");
     printf("   EL VIAJE DE PILDORA Y PASTILLA\n");
     printf("========================================\n");
-    printf("Duracion total: 2 minutos 40 segundos\n");
+    printf("Duracion aproximada: 3 minutos \n");
     printf("Total de escenas: %d\n", totalEscenas);
     printf("========================================\n");
     printf("CONTROLES:\n");
